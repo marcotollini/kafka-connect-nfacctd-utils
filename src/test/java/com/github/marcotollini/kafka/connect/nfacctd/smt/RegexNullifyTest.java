@@ -69,7 +69,66 @@ public class RegexNullifyTest {
     assertEquals(Schema.OPTIONAL_INT64_SCHEMA, transformedRecord.valueSchema().field("magic").schema());
     assertEquals(42L, ((Struct) transformedRecord.value()).getInt64("magic").longValue());
     assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value").schema());
-    assertEquals(null, ((Struct) transformedRecord.value()).getString("value"));;
+    assertEquals(null, ((Struct) transformedRecord.value()).getString("value"));
+
+    // Exercise caching
+    final SourceRecord transformedRecord2 = xform.apply(
+      new SourceRecord(null, null, "test", 1, simpleStructSchema, new Struct(simpleStructSchema)));
+    assertSame(transformedRecord.valueSchema(), transformedRecord2.valueSchema());
+
+  }
+
+  @Test
+  public void copySchemaAndRegexNullifyFieldSingleWrongType() {
+    final Map<String, Object> props = new HashMap<>();
+
+    props.put("fields", "magic");
+    props.put("regex", "test");
+
+    xform.configure(props);
+
+    final Schema simpleStructSchema = SchemaBuilder.struct().name("name").version(1).doc("doc").field("magic", Schema.OPTIONAL_INT64_SCHEMA).build();
+    final Struct simpleStruct = new Struct(simpleStructSchema).put("magic", 42L);
+
+    final SourceRecord record = new SourceRecord(null, null, "test", 0, simpleStructSchema, simpleStruct);
+    final SourceRecord transformedRecord = xform.apply(record);
+
+    assertEquals(simpleStructSchema.name(), transformedRecord.valueSchema().name());
+    assertEquals(simpleStructSchema.version(), transformedRecord.valueSchema().version());
+    assertEquals(simpleStructSchema.doc(), transformedRecord.valueSchema().doc());
+
+    assertEquals(Schema.OPTIONAL_INT64_SCHEMA, transformedRecord.valueSchema().field("magic").schema());
+    assertEquals(42L, ((Struct) transformedRecord.value()).getInt64("magic").longValue());
+
+    // Exercise caching
+    final SourceRecord transformedRecord2 = xform.apply(
+      new SourceRecord(null, null, "test", 1, simpleStructSchema, new Struct(simpleStructSchema)));
+    assertSame(transformedRecord.valueSchema(), transformedRecord2.valueSchema());
+  }
+
+  @Test
+  public void copySchemaAndRegexNullifyFieldChangeSchema() {
+    final Map<String, Object> props = new HashMap<>();
+
+    props.put("fields", "value");
+    props.put("regex", "test");
+
+    xform.configure(props);
+
+    final Schema simpleStructSchema = SchemaBuilder.struct().name("name").version(1).doc("doc").field("magic", Schema.OPTIONAL_INT64_SCHEMA).field("value", Schema.STRING_SCHEMA).build();
+    final Struct simpleStruct = new Struct(simpleStructSchema).put("magic", 42L).put("value", "test");
+
+    final SourceRecord record = new SourceRecord(null, null, "test", 0, simpleStructSchema, simpleStruct);
+    final SourceRecord transformedRecord = xform.apply(record);
+
+    assertEquals(simpleStructSchema.name(), transformedRecord.valueSchema().name());
+    assertEquals(simpleStructSchema.version(), transformedRecord.valueSchema().version());
+    assertEquals(simpleStructSchema.doc(), transformedRecord.valueSchema().doc());
+
+    assertEquals(Schema.OPTIONAL_INT64_SCHEMA, transformedRecord.valueSchema().field("magic").schema());
+    assertEquals(42L, ((Struct) transformedRecord.value()).getInt64("magic").longValue());
+    assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value").schema());
+    assertEquals(null, ((Struct) transformedRecord.value()).getString("value"));
 
     // Exercise caching
     final SourceRecord transformedRecord2 = xform.apply(
@@ -100,7 +159,7 @@ public class RegexNullifyTest {
     assertEquals(Schema.OPTIONAL_INT64_SCHEMA, transformedRecord.valueSchema().field("magic").schema());
     assertEquals(42L, ((Struct) transformedRecord.value()).getInt64("magic").longValue());
     assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value").schema());
-    assertEquals("test", ((Struct) transformedRecord.value()).getString("value"));;
+    assertEquals("test", ((Struct) transformedRecord.value()).getString("value"));
 
     // Exercise caching
     final SourceRecord transformedRecord2 = xform.apply(
@@ -131,11 +190,11 @@ public class RegexNullifyTest {
     assertEquals(Schema.OPTIONAL_INT64_SCHEMA, transformedRecord.valueSchema().field("magic").schema());
     assertEquals(42L, ((Struct) transformedRecord.value()).getInt64("magic").longValue());
     assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value1").schema());
-    assertEquals(null, ((Struct) transformedRecord.value()).getString("value1"));;
+    assertEquals(null, ((Struct) transformedRecord.value()).getString("value1"));
     assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value2").schema());
-    assertEquals(null, ((Struct) transformedRecord.value()).getString("value2"));;
+    assertEquals(null, ((Struct) transformedRecord.value()).getString("value2"));
     assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value3").schema());
-    assertEquals("nontest", ((Struct) transformedRecord.value()).getString("value3"));;
+    assertEquals("nontest", ((Struct) transformedRecord.value()).getString("value3"));
 
     // Exercise caching
     final SourceRecord transformedRecord2 = xform.apply(
@@ -166,11 +225,11 @@ public class RegexNullifyTest {
     assertEquals(Schema.OPTIONAL_INT64_SCHEMA, transformedRecord.valueSchema().field("magic").schema());
     assertEquals(42L, ((Struct) transformedRecord.value()).getInt64("magic").longValue());
     assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value1").schema());
-    assertEquals(null, ((Struct) transformedRecord.value()).getString("value1"));;
+    assertEquals(null, ((Struct) transformedRecord.value()).getString("value1"));
     assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value2").schema());
-    assertEquals(null, ((Struct) transformedRecord.value()).getString("value2"));;
+    assertEquals(null, ((Struct) transformedRecord.value()).getString("value2"));
     assertEquals(Schema.OPTIONAL_STRING_SCHEMA, transformedRecord.valueSchema().field("value3").schema());
-    assertEquals("nontest", ((Struct) transformedRecord.value()).getString("value3"));;
+    assertEquals("nontest", ((Struct) transformedRecord.value()).getString("value3"));
 
     // Exercise caching
     final SourceRecord transformedRecord2 = xform.apply(

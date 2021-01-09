@@ -33,6 +33,8 @@ import org.apache.kafka.connect.transforms.util.SimpleConfig;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.apache.kafka.connect.transforms.util.Requirements.requireMap;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
@@ -55,7 +57,7 @@ public abstract class RegexNullify<R extends ConnectRecord<R>> implements Transf
 
   private static final String PURPOSE = "adding UUID to record";
 
-  private String[] fieldNames;
+  private List<String> fieldNames;
   private String regex;
 
   private Cache<Schema, Schema> schemaUpdateCache;
@@ -64,7 +66,7 @@ public abstract class RegexNullify<R extends ConnectRecord<R>> implements Transf
   public void configure(Map<String, ?> props) {
     final SimpleConfig config = new SimpleConfig(CONFIG_DEF, props);
     String fieldNamesComma = config.getString(ConfigName.FIELD_NAMES);
-    fieldNames = fieldNamesComma.split(",");
+    fieldNames = Arrays.asList(fieldNamesComma.split(","));
     regex = config.getString(ConfigName.FIELD_REGEX);
 
     schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
@@ -114,7 +116,7 @@ public abstract class RegexNullify<R extends ConnectRecord<R>> implements Transf
     }
 
     for (String fieldName: fieldNames){
-      if (value.schema().field(fieldName) == null){
+      if (updatedValue.schema().field(fieldName) == null || updatedValue.schema().field(fieldName).schema() != Schema.OPTIONAL_STRING_SCHEMA){
         continue;
       }
       String fieldValue = (String) updatedValue.get(fieldName);
@@ -144,12 +146,12 @@ public abstract class RegexNullify<R extends ConnectRecord<R>> implements Transf
     final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
 
     for (Field field: schema.fields()) {
-      builder.field(field.name(), field.schema());
+      if (fieldNames.contains(field.name()) && field.schema() == Schema.STRING_SCHEMA){
+        builder.field(field.name(), Schema.OPTIONAL_STRING_SCHEMA);
+      }else{
+        builder.field(field.name(), field.schema());
+      }
     }
-
-    // for (String fieldName: fieldNames){
-    //   builder.field(fieldName, Schema.STRING_SCHEMA);
-    // }
 
     return builder.build();
   }
