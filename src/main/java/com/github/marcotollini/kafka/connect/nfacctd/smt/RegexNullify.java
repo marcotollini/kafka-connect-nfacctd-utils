@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.github.cjmatta.kafka.connect.smt;
+package com.github.marcotollini.kafka.connect.nfacctd.smt;
 
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
@@ -37,29 +37,35 @@ import java.util.UUID;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireMap;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireStruct;
 
-public abstract class InsertUuid<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class RegexNullify<R extends ConnectRecord<R>> implements Transformation<R> {
 
   public static final String OVERVIEW_DOC =
     "Insert a random UUID into a connect record";
 
   private interface ConfigName {
-    String UUID_FIELD_NAME = "uuid.field.name";
+    String FIELD_NAMES = "fields";
+    String FIELD_REGEX = "regex";
   }
 
   public static final ConfigDef CONFIG_DEF = new ConfigDef()
-    .define(ConfigName.UUID_FIELD_NAME, ConfigDef.Type.STRING, "uuid", ConfigDef.Importance.HIGH,
-      "Field name for UUID");
+    .define(ConfigName.FIELD_NAMES, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH,
+      "List of fields comma-separated")
+    .define(ConfigName.FIELD_REGEX, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH,
+      "Regex that should match");
 
   private static final String PURPOSE = "adding UUID to record";
 
-  private String fieldName;
+  private String[] fieldNames;
+  private String regex;
 
   private Cache<Schema, Schema> schemaUpdateCache;
 
   @Override
   public void configure(Map<String, ?> props) {
     final SimpleConfig config = new SimpleConfig(CONFIG_DEF, props);
-    fieldName = config.getString(ConfigName.UUID_FIELD_NAME);
+    String fieldNamesComma = config.getString(ConfigName.FIELD_NAMES);
+    fieldNames = fieldNamesComma.split(",");
+    regex = config.getString(ConfigName.FIELD_REGEX);
 
     schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema, Schema>(16));
   }
@@ -79,7 +85,15 @@ public abstract class InsertUuid<R extends ConnectRecord<R>> implements Transfor
 
     final Map<String, Object> updatedValue = new HashMap<>(value);
 
-    updatedValue.put(fieldName, getRandomUuid());
+    for (String fieldName: fieldNames){
+      if (!updatedValue.containsKey(fieldName)){
+        continue;
+      }
+      String fieldValue = (String) updatedValue.get(fieldName);
+      if(fieldValue != null && fieldValue.matches(regex)){
+        updatedValue.put(fieldName, null);
+      }
+    }
 
     return newRecord(record, null, updatedValue);
   }
@@ -99,7 +113,15 @@ public abstract class InsertUuid<R extends ConnectRecord<R>> implements Transfor
       updatedValue.put(field.name(), value.get(field));
     }
 
-    updatedValue.put(fieldName, getRandomUuid());
+    for (String fieldName: fieldNames){
+      if (value.schema().field(fieldName) == null){
+        continue;
+      }
+      String fieldValue = (String) updatedValue.get(fieldName);
+      if(fieldValue != null && fieldValue.matches(regex)){
+        updatedValue.put(fieldName, null);
+      }
+    }
 
     return newRecord(record, updatedSchema, updatedValue);
   }
@@ -125,7 +147,9 @@ public abstract class InsertUuid<R extends ConnectRecord<R>> implements Transfor
       builder.field(field.name(), field.schema());
     }
 
-    builder.field(fieldName, Schema.STRING_SCHEMA);
+    // for (String fieldName: fieldNames){
+    //   builder.field(fieldName, Schema.STRING_SCHEMA);
+    // }
 
     return builder.build();
   }
@@ -136,7 +160,7 @@ public abstract class InsertUuid<R extends ConnectRecord<R>> implements Transfor
 
   protected abstract R newRecord(R record, Schema updatedSchema, Object updatedValue);
 
-  public static class Key<R extends ConnectRecord<R>> extends InsertUuid<R> {
+  public static class Key<R extends ConnectRecord<R>> extends RegexNullify<R> {
 
     @Override
     protected Schema operatingSchema(R record) {
@@ -155,7 +179,7 @@ public abstract class InsertUuid<R extends ConnectRecord<R>> implements Transfor
 
   }
 
-  public static class Value<R extends ConnectRecord<R>> extends InsertUuid<R> {
+  public static class Value<R extends ConnectRecord<R>> extends RegexNullify<R> {
 
     @Override
     protected Schema operatingSchema(R record) {
