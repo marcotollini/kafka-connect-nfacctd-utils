@@ -69,7 +69,7 @@ public abstract class ToJsonList<R extends ConnectRecord<R>> implements Transfor
     fieldNames = Arrays.asList(fieldNamesComma.split(","));
     separator = config.getString(ConfigName.FIELD_SEPARATOR);
 
-    if (separator == "\\space"){
+    if (separator.equals("\\space")){
       separator = " ";
     }
 
@@ -80,7 +80,7 @@ public abstract class ToJsonList<R extends ConnectRecord<R>> implements Transfor
     String joinS = String.join("\", \"", jsonParts);
 
     String s = "[";
-    if (joinS != ""){
+    if (!joinS.equals("")){
       s += "\"";
       s += joinS;
       s += "\"";
@@ -134,7 +134,7 @@ public abstract class ToJsonList<R extends ConnectRecord<R>> implements Transfor
     }
 
     for (String fieldName: fieldNames){
-      if (updatedValue.schema().field(fieldName) == null || (updatedValue.schema().field(fieldName).schema() != Schema.OPTIONAL_STRING_SCHEMA && updatedValue.schema().field(fieldName).schema() != Schema.STRING_SCHEMA)){
+      if (updatedValue.schema().field(fieldName) == null || (!updatedValue.schema().field(fieldName).schema().equals(Schema.OPTIONAL_STRING_SCHEMA) && !updatedValue.schema().field(fieldName).schema().equals(Schema.STRING_SCHEMA))){
         continue;
       }
       String fieldValue = (String) updatedValue.get(fieldName);

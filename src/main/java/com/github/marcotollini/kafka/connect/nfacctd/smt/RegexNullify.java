@@ -116,7 +116,7 @@ public abstract class RegexNullify<R extends ConnectRecord<R>> implements Transf
     }
 
     for (String fieldName: fieldNames){
-      if (updatedValue.schema().field(fieldName) == null || updatedValue.schema().field(fieldName).schema() != Schema.OPTIONAL_STRING_SCHEMA){
+      if (updatedValue.schema().field(fieldName) == null || !updatedValue.schema().field(fieldName).schema().equals(Schema.OPTIONAL_STRING_SCHEMA)){
         continue;
       }
       String fieldValue = (String) updatedValue.get(fieldName);
@@ -146,7 +146,7 @@ public abstract class RegexNullify<R extends ConnectRecord<R>> implements Transf
     final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
 
     for (Field field: schema.fields()) {
-      if (fieldNames.contains(field.name()) && field.schema() == Schema.STRING_SCHEMA){
+      if (fieldNames.contains(field.name()) && field.schema().equals(Schema.STRING_SCHEMA)){
         builder.field(field.name(), Schema.OPTIONAL_STRING_SCHEMA);
       }else{
         builder.field(field.name(), field.schema());
